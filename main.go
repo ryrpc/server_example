@@ -1,39 +1,41 @@
 package main
 
 import (
-        rysrv "github.com/ryrpc/server"
-        "github.com/valyala/fasthttp"
+	"fmt"
+
+	rysrv "github.com/ryrpc/server"
+	"github.com/valyala/fasthttp"
 )
+
+type ip_t struct {
+	Country string `json:"country"`
+	Region  string `json:"region"`
+	City    string `json:"city"`
+}
 
 func main() {
 
-        repo := rysrv.NewRepository()
+	repo := rysrv.NewRepository()
 
-        repo.Register("sum", func(ctx *rysrv.RequestCtx) {
-                params := ctx.Params()
+	repo.Register("/ip/location/one", func(ctx *fasthttp.RequestCtx) {
 
-                a := params.GetInt("a")
-                b := params.GetInt("b")
+		if !ctx.PostArgs().Has("params") {
+			err := fmt.Errorf("IpToAddress StringBytes (params) = $s\r\n", string(ctx.PostArgs().Peek("params")))
+			rysrv.SetError(ctx, err)
+			return
+		}
 
-                ctx.SetResult(ctx.Arena().NewNumberInt(a + b))
-        })
-        repo.Register("sum_struct", func(ctx *rysrv.RequestCtx) {
-                type (
-                        sumRequest struct {
-                                A int `json:"a"`
-                                B int `json:"b"`
-                        }
-                        sumResponse int
-                )
+		ipStr := string(ctx.PostArgs().Peek("params"))
+		fmt.Println("ipStr = ", ipStr)
 
-                var req sumRequest
-                if err := ctx.ParamsUnmarshal(&req); err != nil {
-                        ctx.SetError(err)
-                        return
-                }
+		resp := ip_t{
+			Country: "中国",
+			Region:  "beijing",
+			City:    "超一米五",
+		}
 
-                ctx.SetResult(sumResponse(req.A + req.B))
-        })
+		rysrv.SetResult(ctx, resp)
+	})
 
-        _ = fasthttp.ListenAndServe(":8080", repo.RequestHandler())
+	_ = fasthttp.ListenAndServe(":8080", repo.RequestHandler())
 }
